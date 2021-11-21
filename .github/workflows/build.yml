@@ -42,7 +42,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: "bin/**"
-          body_path: .github/CHANGELOG.txt
+          body_path: ".github/CHANGELOG.txt"
           tag_name: " Use pure go language development @" ${{ steps.time_now.outputs.dir }}
           draft: false
         env:
