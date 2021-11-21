@@ -39,8 +39,7 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
 
   release:
-    depends-on:
-      - Build
+    needs: Build
     name: release
     runs-on: ubuntu-latest
     steps:
