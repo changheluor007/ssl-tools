@@ -1,4 +1,4 @@
-name: Mac_Build
+name: Build
 
 on:
   push
