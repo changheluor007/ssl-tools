@@ -8,43 +8,27 @@ jobs:
     name: check
     runs-on: ubuntu-latest
     steps:
-      - name: Private Actions Checkout
-        uses: actions/checkout@v2
-      - run: mkdir bin
   Build:
-    needs: check
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        include:
-          - goarch: amd64
-            goos: linux
-          - goarch: amd64
-            goos: darwin
-          - goarch: arm64
-            goos: linux
-          - goarch: arm64
-            goos: darwin
-          - goarch: arm64
-            goos: windows
-          - goarch: arm64
-            goos: windows
+    name: Build
+    runs-on: ubuntu-latest
     steps:
+      -
+        name: Private Actions Checkout
+        uses: actions/checkout@v2
       -
         name: Init Bin
         uses: actions/setup-go@v2
         with:
           go-version: '1.9.3'
-      - run: CGO_ENABLED=0 GOOS=$GOOS GOARCH=$GOARCH go build -o bin/sslt_$GOOS_$GOARCH sslt.go
-        env:
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
+      - run: |
+          mkdir bin
+          env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/sslt_linux_amd64 sslt.go
+          env CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o bin/sslt_linux_arm64 sslt.go
+          env CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -o bin/sslt_mac_amd64 sslt.go
+          env CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o bin/sslt_mac_arm64 sslt.go
+          env CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o bin/sslt_windows_amd64.exe sslt.go
+          env CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -o bin/sslt_windows_arm64.exe sslt.go
 
-  release:
-    needs: Build
-    name: release
-    runs-on: ubuntu-latest
-    steps:
       - uses: dev-drprasad/delete-older-releases@v0.2.0
         with:
           repo: XRSec/ssl-tools
