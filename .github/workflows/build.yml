@@ -13,7 +13,7 @@ jobs:
       - run: mkdir bin
   Build:
     needs: check
-    name: build - ${{ matrix.os }}
+    name: build
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
