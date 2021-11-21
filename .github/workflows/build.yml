@@ -4,7 +4,7 @@ on:
   push
 
 jobs:
-  Mac_Build:
+  Build:
     name: Build
     runs-on: ${{ matrix.os }}
     strategy:
@@ -13,10 +13,7 @@ jobs:
     steps:
       -
         name: Private Actions Checkout
-        uses: actions/checkout@v2.3.4
-        with:
-          persist-credentials: false
-          fetch-depth: 0
+        uses: actions/checkout@v2
       -
         name: Init Bin
         uses: actions/setup-go@v2
