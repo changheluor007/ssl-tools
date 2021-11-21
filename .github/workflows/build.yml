@@ -50,7 +50,7 @@ jobs:
         with:
           files: "bin/**"
           body_path: ".github/CHANGELOG.txt"
-          tag_name: "Use pure go language development @" ${{ steps.time_now.outputs.dir }}
+          tag_name: Use pure go language development @${{ steps.time_now.outputs.dir }}
           draft: false
         env:
           GITHUB_TOKEN: ${{ secrets.TOKEN_GITHUB }}
