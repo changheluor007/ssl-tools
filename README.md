@@ -17,7 +17,7 @@ Usage of sslt:
         Specified commonName (default "GTS Root R1")
   -hostname string
         Specified domain name (default "localhost")
-./sslt --hostname test.com --commonName test
+./sslt --hostname test.com --commonname test
 ```
 
 ## 🗼Debug
