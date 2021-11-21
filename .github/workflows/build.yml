@@ -6,7 +6,6 @@ on:
 jobs:
   Build:
     name: build - ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         include:
@@ -22,6 +21,7 @@ jobs:
             goos: windows
           - goarch: arm64
             goos: windows
+    runs-on: ${{ matrix.os }}
     steps:
       -
         name: Private Actions Checkout
