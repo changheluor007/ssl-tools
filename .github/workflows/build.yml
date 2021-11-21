@@ -33,11 +33,15 @@ jobs:
           go-version: '1.9.3'
       - run: |
           mkdir bin
-          CGO_ENABLED=0 GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o bin/sslt_${{ matrix.goos }}_${{ matrix.goarch }} sslt.go
+          CGO_ENABLED=0 GOOS=$GOOS GOARCH=$GOARCH go build -o bin/sslt_$GOOS_$GOARCH sslt.go
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
 
+  release:
+    name: release
+    runs-on: ubuntu-latest
+    steps:
       - uses: dev-drprasad/delete-older-releases@v0.2.0
         with:
           repo: XRSec/ssl-tools
