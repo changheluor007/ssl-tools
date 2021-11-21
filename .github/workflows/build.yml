@@ -42,7 +42,8 @@ jobs:
         with:
           files: "bin/**"
           body_path: .github/body.txt
-          tag_name: Use pure go language development @${{ steps.time_now.outputs.dir }}
+          name: Use pure go language development latest
+          tag_name: ${{ steps.time_now.outputs.dir }}
           draft: false
         env:
           GITHUB_TOKEN: ${{ secrets.TOKEN_GITHUB }}
