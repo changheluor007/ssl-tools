@@ -4,10 +4,6 @@ on:
   push
 
 jobs:
-  check:
-    name: check
-    runs-on: ubuntu-latest
-    steps:
   Build:
     name: Build
     runs-on: ubuntu-latest
