@@ -6,7 +6,7 @@ on:
 jobs:
   Build:
     name: Build
-    runs-on: centos-latest
+    runs-on: ubuntu-latest
     steps:
       -
         name: Private Actions Checkout
@@ -15,7 +15,7 @@ jobs:
         name: Init Bin
         uses: actions/setup-go@v2
         with:
-          go-version: '1.9.3'
+          go-version: '1.17.3'
         id: go
       - run: |
           yum install glibc-static.x86_64 -y
