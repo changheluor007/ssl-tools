@@ -1,0 +1,14 @@
+## Update
+- fix mac arm64
+- fix linux
+- add windows
+
+## ☂️ How to use
+```bash
+Usage of sslt:
+  -commonname string
+        Specified commonName (default "GTS Root R1")
+  -hostname string
+        Specified domain name (default "localhost")
+./sslt --hostname test.com --commonName test
+```

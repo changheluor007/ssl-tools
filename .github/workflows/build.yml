@@ -1,0 +1,49 @@
+name: Mac_Build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  Mac_Build:
+    name: Mac_Build
+    runs-on: macos-latest
+    steps:
+      -
+        name: Private Actions Checkout
+        uses: actions/checkout@v2.3.4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      -
+        name: Init Bin
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.9.3'
+      - run: |
+          mkdir bin
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/sslt_linux_amd64 sslt.go
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o bin/sslt_linux_arm64 sslt.go
+          CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -o bin/sslt_mac_amd64 sslt.go
+          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o bin/sslt_mac_arm64 sslt.go
+          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o bin/sslt_windows_amd64.exe sslt.go
+          CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -o bin/sslt_windows_arm64.exe sslt.go
+      - uses: dev-drprasad/delete-older-releases@v0.2.0
+        with:
+          repo: ran-xing/ssl-tools
+          keep_latest: 3
+          delete_tag_pattern: ""
+        env:
+          GITHUB_TOKEN: ${{ secrets.TOKEN_GITHUB }}
+      - name: Get version
+        id: time_now
+        run: echo "::set-output name=dir::$(date +%Y-%m-%d)"
+      -
+        name: release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: "bin/**"
+          body_path: .github/CHANGELOG.txt
+          tag_name: " Use pure go language development @" ${{ steps.time_now.outputs.dir }}
+          draft: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.TOKEN_GITHUB }}
