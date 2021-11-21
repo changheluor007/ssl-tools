@@ -31,6 +31,11 @@ jobs:
             CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -o bin/sslt_mac_amd64 sslt.go
             CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o bin/sslt_mac_arm64 sslt.go
           fi
+  release:
+    needs: Build
+    name: release
+    runs-on: ubuntu-latest
+    steps:
       - uses: dev-drprasad/delete-older-releases@v0.2.0
         with:
           repo: ran-xing/ssl-tools
