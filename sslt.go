@@ -161,7 +161,6 @@ func certSetup() (err error) {
 	if err != nil {
 		return err
 	}
-
 	certPrivKeyPEM := new(bytes.Buffer)
 	err = pem.Encode(certPrivKeyPEM, &pem.Block{
 		Type:  "RSA PRIVATE KEY",
