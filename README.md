@@ -14,9 +14,9 @@ Thank you [AndroidOL](https://post.m.smzdm.com/p/715145/)  for your help !
 ```bash
 Usage of sslt:
   -commonname string
-        Specified commonName (default "GTS Root R1")
+    	Specified commonName (default "GTS Root R1")
   -hostname string
-        Specified domain name (default "localhost")
+    	Specified domain name (default "localhost")
 ./sslt --hostname test.com --commonname test
 ```
 

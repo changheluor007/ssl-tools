@@ -11,88 +11,91 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"math/big"
 	"net"
-	"os"
-	"reflect"
+	"net/http"
+	"net/http/httptest"
+	. "ssl-tools/src"
+	"strings"
 	"time"
 )
 
-var ShellFolder, _ = os.Getwd()
-var host = flag.String("hostname", "localhost", "Specified domain name")
+var (
+	r, s, ro, rc, so, sc, c, h string
+	help                       bool
+	db                         = OpenDB()
+)
 
-var commonName = flag.String("commonname","GTS Root R1", "Specified commonName")
-var rootPath = ShellFolder + "/ssl/"
-var author = "XRSec"
-
+func init() {
+	flag.StringVar(&r, "r", "true", "Root_CA Model")
+	flag.StringVar(&ro, "ro", "Google Trust Services LLC", "Specified Root Organization")
+	flag.StringVar(&rc, "rc", "GTS Root R1", "Specified Root CommonName")
+	flag.StringVar(&s, "s", "true", "Server_CA Model")
+	flag.StringVar(&so, "so", "Google Trust Services LLC", "Specified Server Organization")
+	flag.StringVar(&sc, "sc", "GTS CA 1C3", "Specified Server CommonName")
+	flag.StringVar(&c, "c", "US", "Specified Country")
+	flag.StringVar(&h, "h", "127.0.0.1", "Specified domain name")
+	flag.BoolVar(&help, "help", false, "Display help information")
+}
 func main() {
-	// get our ca and server certificate
-	fmt.Println("Welcome to Use SSLTools\nAuthor: " + author)
-	flag.Parse()
-	errs := certSetup()
-	if errs != nil {
-		panic("Error Generate CA" + errs.Error())
-	} else {
-		fmt.Println("Success Generate CA")
+	if help {
+		flag.Usage()
 	}
-	rootCa := readFile("RootCA.pem")
-	rootCaKey := readFile("RootCA_Key.pem")
-	keyPair(rootCa, rootCaKey)
-	rootCaCert := readFile("RootCA_Cert.pem")
-	rootCaCertKey := readFile("RootCA_Cert_Key.pem")
-	keyPair(rootCaCert, rootCaCertKey)
-}
+	//if r == "true" {
+	//	certificate, caPEM, caPrivyKeyPEM, caPrivyKey := configuration(true, rc, ro, c, nil, nil, nil, nil)
+	//}
+	if s == "true" {
+		rootCertificate, rootCAPEM, _, rootCAPrivyKey := configuration(true, rc, ro, c, nil, nil, nil, nil)
+		_, serverCAPEM, serverCAPrivyKeyPEM, _ := configuration(false, sc, so, c, rootCertificate, rootCAPrivyKey, []net.IP{net.ParseIP(h)}, []string{h})
 
-func readFile(fileName string) []byte {
-	rootCa, err := ioutil.ReadFile(rootPath + fileName)
+		serverCert, err := tls.X509KeyPair(serverCAPEM.Bytes(), serverCAPrivyKeyPEM.Bytes())
+		CheckErr(err)
 
-	if err != nil {
-		panic("Error read " + fileName + err.Error())
-	} else {
-		fmt.Println("Success Generate " + fileName)
-	}
-	return rootCa
-}
+		serverTLSConf := &tls.Config{
+			Certificates: []tls.Certificate{serverCert},
+		}
 
-func writeFile(fileName string, caName []byte) {
-	err := ioutil.WriteFile(rootPath+fileName, caName, 0644)
-	if err != nil {
-		return
+		certPool := x509.NewCertPool()
+		// 从 DB 获取 rootCAPEM
+		certPool.AppendCertsFromPEM(rootCAPEM.Bytes())
+		clientTLSConf := &tls.Config{
+			RootCAs: certPool,
+		}
+		testCA(serverTLSConf, clientTLSConf)
 	}
 }
 
-func keyPair(ca, caKey []byte) {
-	var rootCa, err = tls.X509KeyPair(ca, caKey)
-	if err != nil {
-		panic("Error parsing builtin CA " + err.Error())
-	}
-	if rootCa.Leaf, err = x509.ParseCertificate(rootCa.Certificate[0]); err != nil {
-		panic("Error parsing builtin CA " + err.Error())
-	}
-}
-
-func certSetup() (err error) {
-	// set up our CA certificate
-	ca := &x509.Certificate{
-		SerialNumber: big.NewInt(2021),
+func configuration(isCA bool, commonName string, organization string, country string, rootCertificate *x509.Certificate, rootPrivyKey *rsa.PrivateKey, host []net.IP, dnsName []string) (*x509.Certificate, *bytes.Buffer, *bytes.Buffer, *rsa.PrivateKey) {
+	certificate := &x509.Certificate{
+		SerialNumber: big.NewInt(int64(time.Now().Year())),
 		Subject: pkix.Name{
-			CommonName:   *commonName,
-			Organization: []string{"Google Trust Services LLC"},
-			Country:      []string{"US"},
+			CommonName:   commonName,
+			Organization: []string{organization},
+			Country:      []string{country},
 		},
+
+		IsCA:                  isCA,
+		BasicConstraintsValid: isCA,
 		NotBefore:             time.Now(),
 		NotAfter:              time.Now().AddDate(10, 0, 0),
-		IsCA:                  true,
+		IPAddresses:           host,
+		DNSNames:              dnsName,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
-		BasicConstraintsValid: true,
 	}
 	// create our private and public key
-	caPrivKey, err := rsa.GenerateKey(rand.Reader, 4096)
-
+	caPrivyKey, err := rsa.GenerateKey(rand.Reader, 4096)
+	CheckErr(err)
 	// create the CA
-	caBytes, err := x509.CreateCertificate(rand.Reader, ca, ca, &caPrivKey.PublicKey, caPrivKey)
+	if rootCertificate == nil {
+		rootCertificate = certificate
+	}
+	if rootPrivyKey == nil {
+		rootPrivyKey = caPrivyKey
+	}
+	fmt.Println("\nrootCertificate: ", &rootCertificate, "certificate: ", &certificate, "rootPrivyKey: ", &rootPrivyKey, "caPrivyKey: ", &caPrivyKey, "rootPrivyKey.PublicKey: ", "\n")
+	caBytes, err := x509.CreateCertificate(rand.Reader, certificate, rootCertificate, &rootPrivyKey.PublicKey, caPrivyKey)
+	CheckErr(err)
 
 	// pem encode
 	caPEM := new(bytes.Buffer)
@@ -100,92 +103,48 @@ func certSetup() (err error) {
 		Type:  "CERTIFICATE",
 		Bytes: caBytes,
 	})
-	if err != nil {
-		return err
-	}
+	CheckErr(err)
 
-	caPrivKeyPEM := new(bytes.Buffer)
-	err = pem.Encode(caPrivKeyPEM, &pem.Block{
+	caPrivyKeyPEM := new(bytes.Buffer)
+	err = pem.Encode(caPrivyKeyPEM, &pem.Block{
 		Type:  "RSA PRIVATE KEY",
-		Bytes: x509.MarshalPKCS1PrivateKey(caPrivKey),
+		Bytes: x509.MarshalPKCS1PrivateKey(caPrivyKey),
 	})
-	if err != nil {
-		return err
-	}
+	CheckErr(err)
 
-	// set up our server certificate
-	cert := &x509.Certificate{
-		SerialNumber: big.NewInt(2021),
-		Subject: pkix.Name{
-			CommonName: *host,
-			//Organization:  []string{*Organization},
-			//Country:       []string{*Country},
-			//Province:      []string{*Province},
-			//Locality:      []string{*Locality},
-			//StreetAddress: []string{*StreetAddress},
-			//PostalCode:    []string{*PostalCode},
-			//OrganizationalUnit: []string{*OrganizationalUnit},
-		},
-		NotBefore:    time.Now(),
-		NotAfter:     time.Now().AddDate(2, 0, 0),
-		SubjectKeyId: []byte{1, 2, 3, 4, 6},
-		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
-		KeyUsage:     x509.KeyUsageDigitalSignature,
-	}
+	CANew(db, strings.Replace(commonName, " ", "_", -1), isCA, certificate, rootCertificate, caPrivyKey, rootPrivyKey, caPEM, caPrivyKeyPEM)
+	return certificate, caPEM, caPrivyKeyPEM, caPrivyKey
+}
 
-	// IP Domain
-	if net.ParseIP(*host) == nil {
-		cert.DNSNames = append(cert.DNSNames, *host)
+func testCA(serverTLSConf *tls.Config, clientTLSConf *tls.Config) {
+	// set up the httptest.Server using our certificate signed by our CA
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, err := fmt.Fprintln(w, "success!")
+		CheckErr(err)
+	}))
+	server.TLS = serverTLSConf
+	server.StartTLS()
+	defer server.Close()
+	fmt.Println(server.URL)
+	time.Sleep(time.Duration(10) * time.Second)
+
+	// communicate with the server using a http.Client configured to trust our CA
+	transport := &http.Transport{
+		TLSClientConfig: clientTLSConf,
+	}
+	httpTEST := http.Client{
+		Transport: transport,
+	}
+	resp, err := httpTEST.Get(server.URL)
+	CheckErr(err)
+
+	// verify the response
+	respBodyBytes, err := ioutil.ReadAll(resp.Body)
+	CheckErr(err)
+	body := strings.TrimSpace(string(respBodyBytes[:]))
+	if body == "success!" {
+		fmt.Println(body)
 	} else {
-		cert.IPAddresses = append(cert.IPAddresses, net.ParseIP(*host))
+		panic("not successful!")
 	}
-	if err != nil {
-		log.Println(err)
-	}
-
-	certPrivKey, err := rsa.GenerateKey(rand.Reader, 4096)
-	//if err != nil {
-	// return nil, nil, err
-	//}
-
-	certBytes, err := x509.CreateCertificate(rand.Reader, cert, ca, &certPrivKey.PublicKey, caPrivKey)
-	//if err != nil {
-	// return nil, nil, err
-	//}
-
-	certPEM := new(bytes.Buffer)
-	err = pem.Encode(certPEM, &pem.Block{
-		Type:  "CERTIFICATE",
-		Bytes: certBytes,
-	})
-	if err != nil {
-		return err
-	}
-	certPrivKeyPEM := new(bytes.Buffer)
-	err = pem.Encode(certPrivKeyPEM, &pem.Block{
-		Type:  "RSA PRIVATE KEY",
-		Bytes: x509.MarshalPKCS1PrivateKey(certPrivKey),
-	})
-	if err != nil {
-		return err
-	}
-
-	certpool := x509.NewCertPool()
-	certpool.AppendCertsFromPEM(caPEM.Bytes())
-
-	// export CA cert
-	err = os.Mkdir("ssl", os.ModePerm)
-	if err != nil {
-		return err
-	}
-
-	writeFile("RootCA.pem", caPEM.Bytes())
-	writeFile("RootCA_Key.pem", caPrivKeyPEM.Bytes())
-	writeFile("RootCA_Cert.pem", certPEM.Bytes())
-	writeFile("RootCA_Cert_Key.pem", certPrivKeyPEM.Bytes())
-	fmt.Println("type:", reflect.TypeOf(caPEM.Bytes()))
-	if err != nil {
-		return
-	}
-	return
 }
